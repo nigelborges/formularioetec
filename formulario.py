@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS coordenadores (
 )
 """)
 conn.commit()
+            # st.write(f"[LOG] ...")  # Removido do ambiente de produção
 
 # Interface principal
 st.markdown(f"""
@@ -182,6 +183,7 @@ if acao == "Excluir Cadastro":
         if st.button("❌ Confirmar Exclusão"):
             cursor.execute("DELETE FROM coordenadores WHERE id = ?", (id_sel,))
             conn.commit()
+            st.write(f"[LOG] Cadastro excluído: ID {id_sel}")
             st.success("Cadastro excluído com sucesso!")
             st.experimental_rerun()
 
@@ -250,6 +252,7 @@ if acao == "Adicionar Novo":
                                 ", ".join(divulgacao), outros_meios, observacoes
                             ))
                             conn.commit()
+                            st.write(f"[LOG] Novo cadastro salvo: {nome} - CPF: {cpf}")
                             st.success("Cadastro realizado com sucesso!")
                             st.markdown("""
                                 <div style='text-align: center; margin-top: 2em;'>
@@ -259,4 +262,4 @@ if acao == "Adicionar Novo":
                             """, unsafe_allow_html=True)
                             import time
                             time.sleep(5)
-                            st.rerun() if hasattr(st, "rerun") else st.experimental_rerun()
+                            st.rerun()

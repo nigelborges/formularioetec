@@ -186,7 +186,7 @@ if acao == "Excluir Cadastro":
     if selecionado:
         id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
         with st.form("form_excluir"):
-        confirmar = st.form_submit_button("❌ Confirmar Exclusão")
+            confirmar = st.form_submit_button("❌ Confirmar Exclusão")
         if confirmar:
             cursor.execute("DELETE FROM coordenadores WHERE id = ?", (id_sel,))
             conn.commit()

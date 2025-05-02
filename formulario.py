@@ -29,7 +29,7 @@ if "usuario" not in st.session_state:
         if usuario_logado and senha_input == usuario_logado["senha"]:
             st.session_state.usuario = usuario_input
             st.session_state.tipo = usuario_logado["tipo"]
-            st.experimental_rerun()
+            st.rerun() if hasattr(st, "rerun") else st.experimental_rerun()
         else:
             st.error("Usuário ou senha inválidos.")
     st.stop()
@@ -92,7 +92,7 @@ st.markdown(f"""
 # AÇÕES DO ADMINISTRADOR NA SIDEBAR
 st.sidebar.markdown("## 📋 Ações Administrativas")
 if tipo_usuario == "admin":
-    acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Excluir Cadastro"])
+    acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Editar Cadastro", "Excluir Cadastro"])
 else:
     acao = "Adicionar Novo"
 
@@ -102,6 +102,43 @@ if acao == "Visualizar Cadastros":
     df_admin = pd.read_sql_query("SELECT id, nome, cpf, telefone, unidade FROM coordenadores", conn)
     st.dataframe(df_admin)
     st.sidebar.download_button("📥 Exportar CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
+
+# AÇÃO: EDITAR CADASTRO
+elif acao == "Editar Cadastro" and tipo_usuario == "admin":
+    df_edit = pd.read_sql_query("SELECT * FROM coordenadores", conn)
+    if not df_edit.empty:
+        selecionado = st.selectbox("Escolha o cadastro para editar:", df_edit['unidade'].tolist())
+        dados = df_edit[df_edit['unidade'] == selecionado].iloc[0]
+
+        with st.form("form_edit"):
+            st.subheader("Editar Cadastro da Unidade")
+            nome = st.text_input("Nome completo", value=dados["nome"])
+            telefone = st.text_input("Telefone de contato", value=dados["telefone"])
+            cpf = st.text_input("CPF", value=dados["cpf"])
+            banco = st.text_input("Banco", value=dados["banco"])
+            agencia = st.text_input("Agência", value=dados["agencia"])
+            conta = st.text_input("Conta", value=dados["conta"])
+            tipo_chave = st.selectbox("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"], index=["CPF", "Telefone", "E-mail", "Aleatória"].index(dados["tipo_chave"]))
+            chave_pix = st.text_input("Chave Pix", value=dados["chave_pix"])
+            centro_distribuicao = st.radio("Centro de Distribuição?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["centro_distribuicao"]))
+            coordenador_prova = st.radio("Coordenador de Prova?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["coordenador_prova"]))
+            divulgacao = st.multiselect("Meios de Divulgação", ["Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers", "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"], default=dados["divulgacao"].split(", "))
+            outros_meios = st.text_input("Outros Meios", value=dados["outros_meios"])
+            observacoes = st.text_area("Observações", value=dados["observacoes"])
+
+            submit = st.form_submit_button("Salvar Alterações")
+
+            if submit:
+                cursor.execute("""
+                    UPDATE coordenadores SET
+                        nome=?, telefone=?, cpf=?, banco=?, agencia=?, conta=?, tipo_chave=?, chave_pix=?,
+                        centro_distribuicao=?, coordenador_prova=?, divulgacao=?, outros_meios=?, observacoes=?
+                    WHERE id=?
+                """, (nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
+                      centro_distribuicao, coordenador_prova, ", ".join(divulgacao), outros_meios, observacoes, dados["id"]))
+                conn.commit()
+                st.success("Cadastro atualizado com sucesso!")
+                st.rerun()
 
 # AÇÃO: EXCLUIR CADASTRO
 elif acao == "Excluir Cadastro" and tipo_usuario == "admin":
@@ -115,7 +152,7 @@ elif acao == "Excluir Cadastro" and tipo_usuario == "admin":
             cursor.execute("DELETE FROM coordenadores WHERE unidade = ?", (unidade_excluir,))
             conn.commit()
             st.success(f"Cadastro da unidade '{unidade_excluir}' foi removido.")
-            st.experimental_rerun()
+            st.rerun() if hasattr(st, "rerun") else st.experimental_rerun()
     else:
         st.info("Nenhuma unidade cadastrada no momento.")
 

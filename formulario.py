@@ -227,9 +227,9 @@ if acao == "Adicionar Novo":
                             ))
                             conn.commit()
                             st.success("Cadastro realizado com sucesso!")
-st.markdown("""
-    <div style='text-align: center; margin-top: 2em;'>
-        <h3 style='color: green;'>✅ Tudo certo!</h3>
-        <p>Seu cadastro foi registrado com sucesso no sistema.</p>
-    </div>
-""", unsafe_allow_html=True)
+        st.markdown("""
+            <div style='text-align: center; margin-top: 2em;'>
+                <h3 style='color: green;'>✅ Tudo certo!</h3>
+                <p>Seu cadastro foi registrado com sucesso no sistema.</p>
+            </div>
+        """, unsafe_allow_html=True)

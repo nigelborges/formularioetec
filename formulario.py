@@ -113,7 +113,14 @@ if acao == "Visualizar Cadastros":
 # AÇÃO: EDITAR CADASTRO
 if acao == "Editar Cadastro":
     st.subheader("✏️ Editar Cadastro Existente")
-    cadastros = pd.read_sql_query("SELECT id, nome, cpf FROM coordenadores", conn)
+    unidades_disponiveis = pd.read_sql_query("SELECT DISTINCT unidade FROM coordenadores ORDER BY unidade", conn)['unidade'].tolist()
+    unidade_filtrada = st.selectbox("Filtrar por Unidade:", ["-- selecione --"] + unidades_disponiveis)
+
+    query = "SELECT id, nome, cpf FROM coordenadores"
+    if unidade_filtrada != "-- selecione --":
+        query += f" WHERE unidade = '{unidade_filtrada}'"
+
+    cadastros = pd.read_sql_query(query, conn)
     cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
     selecionado = st.selectbox("Selecione um cadastro para editar:", cadastros['display'])
 
@@ -159,7 +166,14 @@ if acao == "Editar Cadastro":
 # AÇÃO: EXCLUIR CADASTRO
 if acao == "Excluir Cadastro":
     st.subheader("🗑️ Excluir Cadastro")
-    cadastros = pd.read_sql_query("SELECT id, nome, cpf FROM coordenadores", conn)
+    unidades_disponiveis = pd.read_sql_query("SELECT DISTINCT unidade FROM coordenadores ORDER BY unidade", conn)['unidade'].tolist()
+    unidade_filtrada = st.selectbox("Filtrar por Unidade:", ["-- selecione --"] + unidades_disponiveis)
+
+    query = "SELECT id, nome, cpf FROM coordenadores"
+    if unidade_filtrada != "-- selecione --":
+        query += f" WHERE unidade = '{unidade_filtrada}'"
+
+    cadastros = pd.read_sql_query(query, conn)
     cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
     selecionado = st.selectbox("Selecione um cadastro para excluir:", cadastros['display'])
 

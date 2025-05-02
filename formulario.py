@@ -1,76 +1,82 @@
-from flask import Flask, render_template, redirect, request
-from flask_sqlalchemy import SQLAlchemy
-from wtforms import Form, StringField, SelectField, RadioField, TextAreaField, validators
+import streamlit as st
+import sqlite3
 import re
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///etec.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = sqlite3.connect("etec.db", check_same_thread=False)
+cursor = db.cursor()
 
-db = SQLAlchemy(app)
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS coordenadores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT,
+    telefone TEXT,
+    cpf TEXT,
+    banco TEXT,
+    agencia TEXT,
+    conta TEXT,
+    tipo_chave TEXT,
+    chave_pix TEXT,
+    unidade TEXT,
+    endereco TEXT,
+    centro_distribuicao TEXT,
+    coordenador_prova TEXT,
+    divulgacao TEXT,
+    outros_meios TEXT,
+    observacoes TEXT
+)
+''')
+db.commit()
 
-class Coordenador(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(150))
-    telefone = db.Column(db.String(20))
-    cpf = db.Column(db.String(14))
-    banco = db.Column(db.String(50))
-    agencia = db.Column(db.String(20))
-    conta = db.Column(db.String(20))
-    tipo_chave = db.Column(db.String(20))
-    chave_pix = db.Column(db.String(100))
-    unidade = db.Column(db.String(150))
-    endereco = db.Column(db.String(200))
-    centro_distribuicao = db.Column(db.String(10))
-    coordenador_prova = db.Column(db.String(10))
-    divulgacao = db.Column(db.String(100))
-    outros_meios = db.Column(db.String(200))
-    observacoes = db.Column(db.String(300))
+st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
 
-class CadastroForm(Form):
-    nome = StringField('Nome completo', [validators.InputRequired()])
-    telefone = StringField('Telefone', [validators.Regexp(r'\d{10,11}')])
-    cpf = StringField('CPF', [validators.Regexp(r'\d{11}')])
-    banco = StringField('Banco', [validators.InputRequired()])
-    agencia = StringField('Agência', [validators.InputRequired()])
-    conta = StringField('Conta com dígito', [validators.InputRequired()])
-    tipo_chave = SelectField('Tipo de chave Pix', choices=[('cpf', 'CPF'), ('telefone', 'Telefone'), ('email', 'E-mail'), ('aleatoria', 'Aleatória')])
-    chave_pix = StringField('Chave Pix', [validators.InputRequired()])
-    unidade = StringField('Nome da Unidade', [validators.InputRequired()])
-    endereco = StringField('Endereço completo', [validators.InputRequired()])
-    centro_distribuicao = RadioField('Centro de Distribuição?', choices=[('sim', 'Sim'), ('nao', 'Não')])
-    coordenador_prova = RadioField('Coordenador de Local?', choices=[('sim', 'Sim'), ('nao', 'Não')])
-    divulgacao = SelectField('Melhor meio de divulgação', choices=[('trafego', 'Tráfego Pago'), ('tv', 'TV'), ('panfletos', 'Panfletos'), ('banners', 'Banners'), ('outdoor', 'Outdoor'), ('outros', 'Outros')])
-    outros_meios = StringField('Se outros, quais?')
-    observacoes = TextAreaField('Observações e Sugestões')
+with st.form("form"):
+    st.subheader("Dados Pessoais")
+    nome = st.text_input("Nome completo")
+    telefone = st.text_input("Telefone de contato (apenas números)")
+    cpf = st.text_input("CPF (somente números)")
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    form = CadastroForm(request.form)
-    if request.method == 'POST' and form.validate():
-        novo = Coordenador(
-            nome=form.nome.data,
-            telefone=form.telefone.data,
-            cpf=form.cpf.data,
-            banco=form.banco.data,
-            agencia=form.agencia.data,
-            conta=form.conta.data,
-            tipo_chave=form.tipo_chave.data,
-            chave_pix=form.chave_pix.data,
-            unidade=form.unidade.data,
-            endereco=form.endereco.data,
-            centro_distribuicao=form.centro_distribuicao.data,
-            coordenador_prova=form.coordenador_prova.data,
-            divulgacao=form.divulgacao.data,
-            outros_meios=form.outros_meios.data,
-            observacoes=form.observacoes.data
-        )
-        db.session.add(novo)
-        db.session.commit()
-        return redirect('/')
-    return render_template('form.html', form=form)
+    st.subheader("Dados Bancários")
+    banco = st.text_input("Banco")
+    agencia = st.text_input("Agência")
+    conta = st.text_input("Conta (com dígito)")
+    tipo_chave = st.selectbox("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"])
+    chave_pix = st.text_input("Chave Pix")
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)    
+    st.subheader("Informações da Unidade Escolar")
+    unidade = st.text_input("Nome da Unidade (ETEC)")
+    endereco = st.text_input("Endereço completo da Unidade")
+
+    st.subheader("Funções no Processo Seletivo")
+    centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"])
+    coordenador_prova = st.radio("Você será Coordenador de Local de Prova?", ["Sim", "Não"])
+
+    divulgacao = st.multiselect("Meio(s) de Divulgação mais efetivo(s) para o Vestibulinho", [
+        "Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers",
+        "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"])
+
+    outros_meios = ""
+    if "Outros" in divulgacao:
+        outros_meios = st.text_input("Quais?")
+
+    observacoes = st.text_area("Observações e Sugestões")
+
+    submitted = st.form_submit_button("Enviar")
+
+    if submitted:
+        if not (re.fullmatch(r'\d{11}', cpf) and re.fullmatch(r'\d{10,11}', telefone)):
+            st.error("CPF ou telefone inválido. Verifique e tente novamente.")
+        else:
+            cursor.execute('''
+                INSERT INTO coordenadores (
+                    nome, telefone, cpf, banco, agencia, conta,
+                    tipo_chave, chave_pix, unidade, endereco,
+                    centro_distribuicao, coordenador_prova, divulgacao,
+                    outros_meios, observacoes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
+                unidade, endereco, centro_distribuicao, coordenador_prova,
+                ", ".join(divulgacao), outros_meios, observacoes
+            ))
+            db.commit()
+            st.success("Cadastro realizado com sucesso!")

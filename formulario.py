@@ -190,7 +190,7 @@ if acao == "Excluir Cadastro":
             conn.commit()
             st.write(f"[LOG] Cadastro excluído: ID {id_sel}")
             st.success("Cadastro excluído com sucesso!")
-            st.experimental_rerun()
+            st.rerun()
 
 # AÇÃO: ADICIONAR NOVO
 if acao == "Adicionar Novo":

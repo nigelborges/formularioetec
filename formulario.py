@@ -227,6 +227,8 @@ if acao == "Adicionar Novo":
                             ))
                             conn.commit()
                             st.success("Cadastro realizado com sucesso!")
+                            if st.button("Novo Cadastro"):
+                                st.rerun()
         st.markdown("""
             <div style='text-align: center; margin-top: 2em;'>
                 <h3 style='color: green;'>✅ Tudo certo!</h3>

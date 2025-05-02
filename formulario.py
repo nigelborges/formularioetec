@@ -3,6 +3,8 @@ import sqlite3
 import re
 import pandas as pd
 from PIL import Image
+import base64
+from io import BytesIO
 
 # Carregar escolas com limpeza de espaços
 try:
@@ -38,14 +40,22 @@ CREATE TABLE IF NOT EXISTS coordenadores (
 ''')
 conn.commit()
 
-# Logo e título centralizados
+# Logo centralizada com título
+def get_image_base64(img):
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_bytes = buffered.getvalue()
+    return base64.b64encode(img_bytes).decode()
+
 logo = Image.open("idecan.png")
-st.markdown("""
+logo_base64 = get_image_base64(logo)
+
+st.markdown(f"""
     <div style='text-align: center;'>
-        <img src='data:image/png;base64,{}' width='400'>
+        <img src='data:image/png;base64,{logo_base64}' width='400'>
         <h1>Cadastro de Coordenadores - Vestibulinho ETEC 2025.2</h1>
     </div>
-""".format(st.image_to_url(logo)), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Filtros dinâmicos fora do form
 st.subheader("Informações da Unidade Escolar")

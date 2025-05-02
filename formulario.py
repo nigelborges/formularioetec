@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import re
 import pandas as pd
+from PIL import Image
 
 # Carregar escolas com limpeza de espaços
 try:
@@ -37,7 +38,10 @@ CREATE TABLE IF NOT EXISTS coordenadores (
 ''')
 conn.commit()
 
+# Título e Logo
 st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
+logo = Image.open("idecan.png")
+st.image(logo, width=200)
 
 # Filtros dinâmicos fora do form
 st.subheader("Informações da Unidade Escolar")

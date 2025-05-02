@@ -103,7 +103,7 @@ if tipo_usuario == "admin":
         st.sidebar.warning("⚠️ Esta ação apagará todos os cadastros do sistema. Confirme abaixo.")
         if st.sidebar.button("❌ Confirmar exclusão total"):
             
-            cursor.execute("DELETE FROM coordenadores"
+            cursor.execute("DELETE FROM coordenadores")
             conn.commit()
             st.sidebar.success("Todos os cadastros foram apagados.")
             df_vazio = pd.read_sql_query("SELECT * FROM coordenadores", conn)

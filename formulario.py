@@ -104,8 +104,8 @@ if tipo_usuario == "admin":
         if st.sidebar.button("❌ Confirmar exclusão total"):
             with open("exclusao_total.log", "a") as log:
                 log.write(f"Exclusão total realizada por {usuario_input} (tipo: {tipo_usuario})
-")")
-                        cursor.execute("DELETE FROM coordenadores"
+")
+            cursor.execute("DELETE FROM coordenadores"
             conn.commit()
             st.sidebar.success("Todos os cadastros foram apagados.")
             df_vazio = pd.read_sql_query("SELECT * FROM coordenadores", conn)

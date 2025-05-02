@@ -39,22 +39,24 @@ conn.commit()
 
 st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
 
+# Filtros dinâmicos fora do form
+st.subheader("Informações da Unidade Escolar")
+regioes = sorted(escolas_df['Região Administrativa'].unique())
+regiao_sel = st.selectbox("Região Administrativa", regioes)
+
+df_municipios = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
+municipios = sorted(df_municipios['Município'].unique())
+municipio_sel = st.selectbox("Município", municipios)
+
+df_unidades = df_municipios[df_municipios['Município'] == municipio_sel]
+unidades = sorted(df_unidades['Unidade'].unique())
+unidade_sel = st.selectbox("Unidade (ETEC)", unidades)
+
+endereco = df_unidades[df_unidades['Unidade'] == unidade_sel]['Endereço'].values[0]
+st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
+
+# Formulário principal
 with st.form("form"):
-    st.subheader("Informações da Unidade Escolar")
-    regioes = sorted(escolas_df['Região Administrativa'].unique())
-    regiao_sel = st.selectbox("Região Administrativa", regioes)
-
-    df_municipios = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
-    municipios = sorted(df_municipios['Município'].unique())
-    municipio_sel = st.selectbox("Município", municipios)
-
-    df_unidades = df_municipios[df_municipios['Município'] == municipio_sel]
-    unidades = sorted(df_unidades['Unidade'].unique())
-    unidade_sel = st.selectbox("Unidade (ETEC)", unidades)
-
-    endereco = df_unidades[df_unidades['Unidade'] == unidade_sel]['Endereço'].values[0]
-    st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
-
     st.subheader("Dados Pessoais")
     nome = st.text_input("Nome completo")
     telefone = st.text_input("Telefone de contato (apenas números)")

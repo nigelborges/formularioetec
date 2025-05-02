@@ -35,13 +35,6 @@ conn.commit()
 
 st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
 
-# Botões de exportação e visualização
-with st.expander("📄 Visualizar Cadastros e Exportar"):
-    df = pd.read_sql_query("SELECT * FROM coordenadores", conn)
-    st.dataframe(df)
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Baixar CSV", csv, "coordenadores.csv", "text/csv")
-
 with st.form("form"):
     st.subheader("Informações da Unidade Escolar")
     regioes = sorted(escolas_df['Região Administrativa'].unique())

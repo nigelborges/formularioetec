@@ -126,7 +126,7 @@ elif acao == "Editar Cadastro" and tipo_usuario == "admin":
             banco = st.text_input("Banco", value=dados["banco"])
             agencia = st.text_input("Agência", value=dados["agencia"])
             conta = st.text_input("Conta", value=dados["conta"])
-            tipo_chave = st.selectbox("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"], index=["CPF", "Telefone", "E-mail", "Aleatória"].index(dados["tipo_chave"]))
+            tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"]))
             chave_pix = st.text_input("Chave Pix", value=dados["chave_pix"])
             centro_distribuicao = st.radio("Centro de Distribuição?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["centro_distribuicao"]))
             coordenador_prova = st.radio("Coordenador de Prova?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["coordenador_prova"]))
@@ -187,8 +187,8 @@ if acao == "Adicionar Novo":
                 with st.form("form"):
                     st.subheader("Dados Pessoais")
                     nome = st.text_input("Nome completo")
-                    telefone = st.text_input("Telefone de contato (apenas números)")
-                    cpf = st.text_input("CPF (somente números)")
+                    telefone = st.text_input("Telefone de contato", placeholder="(11) 91234-5678")
+                    cpf = st.text_input("CPF", placeholder="123.456.789-00")
 
                     st.subheader("Dados Bancários")
                     banco = st.text_input("Banco")
@@ -203,7 +203,8 @@ if acao == "Adicionar Novo":
 
                     divulgacao = st.multiselect("Meio(s) de Divulgação mais efetivo(s) para o Vestibulinho", [
                         "Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers",
-                        "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"])
+                        "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"],
+                        max_selections=2)
 
                     outros_meios = ""
                     if "Outros" in divulgacao:

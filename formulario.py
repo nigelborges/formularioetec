@@ -96,6 +96,13 @@ st.markdown(f"""
 # AÇÕES DO ADMINISTRADOR NA SIDEBAR
 st.sidebar.markdown("## 📋 Ações Administrativas")
 if tipo_usuario == "admin":
+    if st.sidebar.button("🧨 Zerar todos os cadastros"):
+        st.sidebar.warning("⚠️ Esta ação apagará todos os cadastros do sistema. Confirme abaixo.")
+        if st.sidebar.button("❌ Confirmar exclusão total"):
+            cursor.execute("DELETE FROM coordenadores")
+            conn.commit()
+            st.sidebar.success("Todos os cadastros foram apagados.")
+            st.rerun()
     acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Editar Cadastro", "Excluir Cadastro"], key="acao_admin")
 else:
     acao = "Adicionar Novo"

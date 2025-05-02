@@ -20,7 +20,6 @@ logo_base64 = get_image_base64(logo)
 usuarios = {
     "admin": {"senha": "IDECAN2025", "tipo": "admin"},
     "cadastro": {"senha": "idecan123", "tipo": "comum"},
-},
     "usuario1": {"senha": "123", "tipo": "comum"},
 }
 

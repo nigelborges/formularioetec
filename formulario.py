@@ -38,10 +38,10 @@ CREATE TABLE IF NOT EXISTS coordenadores (
 ''')
 conn.commit()
 
-# Título e Logo
-st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
+# Logo acima do título
 logo = Image.open("idecan.png")
-st.image(logo, width=200)
+st.image(logo, width=350)
+st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
 
 # Filtros dinâmicos fora do form
 st.subheader("Informações da Unidade Escolar")

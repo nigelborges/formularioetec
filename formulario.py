@@ -186,12 +186,13 @@ if acao == "Excluir Cadastro":
     if selecionado:
         id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
         with st.form("form_excluir"):
+            st.warning("⚠️ Esta ação é irreversível. Tem certeza que deseja excluir este cadastro?")
             confirmar = st.form_submit_button("❌ Confirmar Exclusão")
             if confirmar:
-            cursor.execute("DELETE FROM coordenadores WHERE id = ?", (id_sel,))
-            conn.commit()
-            st.success("Cadastro excluído com sucesso!")
-            st.rerun()
+                cursor.execute("DELETE FROM coordenadores WHERE id = ?", (id_sel,))
+                conn.commit()
+                st.success("Cadastro excluído com sucesso!")
+                st.rerun()
 
 # AÇÃO: ADICIONAR NOVO
 if acao == "Adicionar Novo":

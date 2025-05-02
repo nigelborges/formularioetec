@@ -126,7 +126,7 @@ elif acao == "Editar Cadastro" and tipo_usuario == "admin":
             banco = st.text_input("Banco", value=dados["banco"])
             agencia = st.text_input("Agência", value=dados["agencia"])
             conta = st.text_input("Conta", value=dados["conta"])
-            tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"]))
+            tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"])
             chave_pix = st.text_input("Chave Pix", value=dados["chave_pix"])
             centro_distribuicao = st.radio("Centro de Distribuição?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["centro_distribuicao"]))
             coordenador_prova = st.radio("Coordenador de Prova?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["coordenador_prova"]))

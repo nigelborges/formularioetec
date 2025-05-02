@@ -111,61 +111,77 @@ if acao == "Visualizar Cadastros":
     st.sidebar.download_button("📅 Exportar CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
 
 # AÇÃO: ADICIONAR NOVO
-# (esta parte permanece igual)
+if acao == "Adicionar Novo":
+    st.subheader("Informações da Unidade Escolar")
+    regioes = ["-- selecione --"] + sorted(escolas_df['Região Administrativa'].unique())
+    regiao_sel = st.selectbox("Região Administrativa", regioes)
 
-# AÇÃO: EDITAR CADASTRO
-if acao == "Editar Cadastro":
-    st.subheader("✏️ Editar Cadastro Existente")
-    cadastros = pd.read_sql_query("SELECT id, nome, cpf FROM coordenadores", conn)
-    cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
-    selecionado = st.selectbox("Selecione um cadastro para editar:", cadastros['display'])
+    if regiao_sel != "-- selecione --":
+        df_municipios = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
+        municipios = ["-- selecione --"] + sorted(df_municipios['Município'].unique())
+        municipio_sel = st.selectbox("Município", municipios)
 
-    if selecionado:
-        id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
-        dados = pd.read_sql_query(f"SELECT * FROM coordenadores WHERE id = {id_sel}", conn).iloc[0]
+        if municipio_sel != "-- selecione --":
+            df_unidades = df_municipios[df_municipios['Município'] == municipio_sel]
+            unidades = ["-- selecione --"] + sorted(df_unidades['Unidade'].unique())
+            unidade_sel = st.selectbox("Unidade (ETEC)", unidades)
 
-        with st.form("form_edicao"):
-            nome = st.text_input("Nome completo", value=dados["nome"])
-            telefone = st.text_input("Telefone de contato", value=dados["telefone"])
-            cpf = st.text_input("CPF", value=dados["cpf"])
-            banco = st.text_input("Banco", value=dados["banco"])
-            agencia = st.text_input("Agência", value=dados["agencia"])
-            conta = st.text_input("Conta (com dígito)", value=dados["conta"])
-            tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"], index=["CPF", "Telefone", "E-mail", "Aleatória"].index(dados["tipo_chave"]))
-            chave_pix = st.text_input("Chave Pix", value=dados["chave_pix"])
-            centro_distribuicao = st.radio("Centro de Distribuição?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["centro_distribuicao"]))
-            coordenador_prova = st.radio("Coordenador de Prova?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["coordenador_prova"]))
-            divulgacao_lista = [d.strip() for d in dados["divulgacao"].split(",")] if dados["divulgacao"] else []
-            divulgacao = st.multiselect("Meios de Divulgação", ["Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers", "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"], default=divulgacao_lista)
-            outros_meios = st.text_input("Outros meios", value=dados["outros_meios"])
-            observacoes = st.text_area("Observações", value=dados["observacoes"])
-            atualizar = st.form_submit_button("Salvar alterações")
-            if atualizar:
-                cursor.execute("""
-                    UPDATE coordenadores SET
-                        nome=?, telefone=?, cpf=?, banco=?, agencia=?, conta=?, tipo_chave=?, chave_pix=?,
-                        centro_distribuicao=?, coordenador_prova=?, divulgacao=?, outros_meios=?, observacoes=?
-                    WHERE id=?
-                """, (
-                    nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
-                    centro_distribuicao, coordenador_prova, ", ".join(divulgacao), outros_meios, observacoes,
-                    id_sel
-                ))
-                conn.commit()
-                st.success("Cadastro atualizado com sucesso!")
-                st.experimental_rerun()
+            if unidade_sel != "-- selecione --":
+                endereco = df_unidades[df_unidades['Unidade'] == unidade_sel]['Endereço'].values[0]
+                st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
 
-# AÇÃO: EXCLUIR CADASTRO
-if acao == "Excluir Cadastro":
-    st.subheader("🔌 Excluir Cadastro")
-    cadastros = pd.read_sql_query("SELECT id, nome, cpf FROM coordenadores", conn)
-    cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
-    selecionado = st.selectbox("Selecione um cadastro para excluir:", cadastros['display'])
-    if selecionado:
-        id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
-        confirmar = st.button("Confirmar exclusão")
-        if confirmar:
-            cursor.execute("DELETE FROM coordenadores WHERE id=?", (id_sel,))
-            conn.commit()
-            st.success("Cadastro excluído com sucesso!")
-            st.experimental_rerun()
+                with st.form("form"):
+                    st.subheader("Dados Pessoais")
+                    nome = st.text_input("Nome completo")
+                    telefone = st.text_input("Telefone de contato", max_chars=15)
+                    cpf = st.text_input("CPF", max_chars=14)
+
+                    st.subheader("Dados Bancários")
+                    banco = st.text_input("Banco")
+                    agencia = st.text_input("Agência")
+                    conta = st.text_input("Conta (com dígito)")
+                    tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"])
+                    chave_pix = st.text_input("Chave Pix")
+
+                    st.subheader("Funções no Processo Seletivo")
+                    centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"])
+                    coordenador_prova = st.radio("Você será Coordenador de Local de Prova?", ["Sim", "Não"])
+
+                    divulgacao = st.multiselect("Meio(s) de Divulgação mais efetivo(s) para o Vestibulinho", [
+                        "Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers",
+                        "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"], max_selections=2)
+
+                    outros_meios = ""
+                    if "Outros" in divulgacao:
+                        outros_meios = st.text_input("Quais?")
+
+                    observacoes = st.text_area("Observações e Sugestões")
+
+                    submitted = st.form_submit_button("Salvar Cadastro")
+                    if submitted:
+                        if not (re.fullmatch(r'\d{11}', cpf.replace('.', '').replace('-', '')) and re.fullmatch(r'\d{10,11}', telefone.replace('(', '').replace(')', '').replace('-', '').replace(' ', ''))):
+                            st.error("CPF ou telefone inválido. Verifique e tente novamente.")
+                        else:
+                            cursor.execute("""
+                                INSERT INTO coordenadores (
+                                    nome, telefone, cpf, banco, agencia, conta,
+                                    tipo_chave, chave_pix, unidade, endereco,
+                                    centro_distribuicao, coordenador_prova, divulgacao,
+                                    outros_meios, observacoes
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
+                                unidade_sel, endereco, centro_distribuicao, coordenador_prova,
+                                ", ".join(divulgacao), outros_meios, observacoes
+                            ))
+                            conn.commit()
+                            st.success("Cadastro realizado com sucesso!")
+                            st.markdown("""
+                                <div style='text-align: center; margin-top: 2em;'>
+                                    <h3 style='color: green;'>✅ Tudo certo!</h3>
+                                    <p>Seu cadastro foi registrado com sucesso no sistema.</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            import time
+                            time.sleep(5)
+                            st.rerun() if hasattr(st, "rerun") else st.experimental_rerun()

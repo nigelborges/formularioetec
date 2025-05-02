@@ -165,7 +165,7 @@ if acao == "Editar Cadastro":
                 ))
                 conn.commit()
                 st.success("Cadastro atualizado com sucesso!")
-                st.experimental_rerun()
+                st.rerun()
 
 # AÇÃO: EXCLUIR CADASTRO
 if acao == "Excluir Cadastro":

@@ -18,7 +18,9 @@ logo_base64 = get_image_base64(logo)
 
 # ==== USUÁRIOS E SENHAS ====
 usuarios = {
-    "admin": {"senha": "admin2025", "tipo": "admin"},
+    "admin": {"senha": "IDECAN2025", "tipo": "admin"},
+    "cadastro": {"senha": "idecan123", "tipo": "comum"},
+},
     "usuario1": {"senha": "123", "tipo": "comum"},
 }
 
@@ -115,13 +117,15 @@ if acao == "Visualizar Cadastros":
 if acao == "Editar Cadastro":
     st.subheader("✏️ Editar Cadastro Existente")
     unidades_disponiveis = pd.read_sql_query("SELECT DISTINCT unidade FROM coordenadores ORDER BY unidade", conn)['unidade'].tolist()
-    unidade_filtrada = st.selectbox("Filtrar por Unidade:", ["-- selecione --"] + unidades_disponiveis)
+    unidade_filtrada = st.selectbox("Selecione a Unidade para editar registros:", unidades_disponiveis)
 
-    query = "SELECT id, nome, cpf FROM coordenadores"
-    if unidade_filtrada != "-- selecione --":
-        query += f" WHERE unidade = '{unidade_filtrada}'"
+    query = f"SELECT id, nome, cpf FROM coordenadores WHERE unidade = '{unidade_filtrada}'"
 
     cadastros = pd.read_sql_query(query, conn)
+    filtro_busca = st.text_input("Buscar por nome ou CPF:").strip().lower()
+    if filtro_busca:
+        cadastros = cadastros[cadastros.apply(lambda row: filtro_busca in row['nome'].lower() or filtro_busca in row['cpf'], axis=1)]
+
     cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
     selecionado = st.selectbox("Selecione um cadastro para editar:", cadastros['display'])
 
@@ -168,13 +172,15 @@ if acao == "Editar Cadastro":
 if acao == "Excluir Cadastro":
     st.subheader("🗑️ Excluir Cadastro")
     unidades_disponiveis = pd.read_sql_query("SELECT DISTINCT unidade FROM coordenadores ORDER BY unidade", conn)['unidade'].tolist()
-    unidade_filtrada = st.selectbox("Filtrar por Unidade:", ["-- selecione --"] + unidades_disponiveis)
+    unidade_filtrada = st.selectbox("Selecione a Unidade para excluir registros:", unidades_disponiveis)
 
-    query = "SELECT id, nome, cpf FROM coordenadores"
-    if unidade_filtrada != "-- selecione --":
-        query += f" WHERE unidade = '{unidade_filtrada}'"
+    query = f"SELECT id, nome, cpf FROM coordenadores WHERE unidade = '{unidade_filtrada}'"
 
     cadastros = pd.read_sql_query(query, conn)
+    filtro_busca = st.text_input("Buscar por nome ou CPF:").strip().lower()
+    if filtro_busca:
+        cadastros = cadastros[cadastros.apply(lambda row: filtro_busca in row['nome'].lower() or filtro_busca in row['cpf'], axis=1)]
+
     cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
     selecionado = st.selectbox("Selecione um cadastro para excluir:", cadastros['display'])
 

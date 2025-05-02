@@ -59,7 +59,10 @@ except Exception as e:
     st.stop()
 
 # Banco de dados
-conn = sqlite3.connect("etec.db", check_same_thread=False)
+import os
+db_path = os.path.join(os.getcwd(), "etec.db")
+st.write(f"📁 Banco de dados em: {db_path}")
+conn = sqlite3.connect(db_path, check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute("""
@@ -118,6 +121,8 @@ if acao == "Visualizar Cadastros":
     df_admin = pd.read_sql_query("SELECT * FROM coordenadores", conn)
     st.dataframe(df_admin)
     st.sidebar.download_button("📅 Exportar CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
+    with open(db_path, "rb") as db_file:
+        st.sidebar.download_button("🧾 Baixar Banco de Dados", db_file, file_name="etec.db", mime="application/octet-stream")
 
 # AÇÃO: EDITAR CADASTRO
 if acao == "Editar Cadastro":

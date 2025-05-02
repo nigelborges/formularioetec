@@ -3,8 +3,12 @@ import sqlite3
 import re
 import pandas as pd
 
-# Carregar escolas
+# Carregar escolas e limpar espaços
 escolas_df = pd.read_excel("etcs.xlsx")
+escolas_df['Região Administrativa'] = escolas_df['Região Administrativa'].str.strip()
+escolas_df['Município'] = escolas_df['Município'].str.strip()
+escolas_df['Unidade'] = escolas_df['Unidade'].str.strip()
+escolas_df['Endereço'] = escolas_df['Endereço'].str.strip()
 
 # Banco de dados
 conn = sqlite3.connect("etec.db", check_same_thread=False)

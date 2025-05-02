@@ -6,6 +6,16 @@ from PIL import Image
 import base64
 from io import BytesIO
 
+# ==== LOGO BASE64 PRE-CARREGADA ====
+def get_image_base64(img):
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_bytes = buffered.getvalue()
+    return base64.b64encode(img_bytes).decode()
+
+logo = Image.open("idecan.png")
+logo_base64 = get_image_base64(logo)
+
 # ==== USUÁRIOS E SENHAS ====
 usuarios = {
     "admin": {"senha": "admin2025", "tipo": "admin"},
@@ -74,14 +84,7 @@ CREATE TABLE IF NOT EXISTS coordenadores (
 conn.commit()
 
 # Logo e título centralizados
-def get_image_base64(img):
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    img_bytes = buffered.getvalue()
-    return base64.b64encode(img_bytes).decode()
-
-logo = Image.open("idecan.png")
-logo_base64 = get_image_base64(logo)
+# (carregamento antecipado já foi feito acima)
 
 st.markdown(f"""
     <div style='text-align: center;'>

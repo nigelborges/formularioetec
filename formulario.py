@@ -6,6 +6,24 @@ from PIL import Image
 import base64
 from io import BytesIO
 
+# ==== USUÁRIOS E SENHAS ====
+usuarios = {
+    "admin": {"senha": "admin2025", "tipo": "admin"},
+    "usuario1": {"senha": "123", "tipo": "comum"},
+}
+
+st.sidebar.header("🔐 Login")
+usuario_input = st.sidebar.text_input("Usuário")
+senha_input = st.sidebar.text_input("Senha", type="password")
+
+usuario_logado = usuarios.get(usuario_input)
+
+if usuario_logado and senha_input == usuario_logado["senha"]:
+    tipo_usuario = usuario_logado["tipo"]
+else:
+    st.warning("Informe usuário e senha válidos para acessar.")
+    st.stop()
+
 # Carregar escolas com limpeza de espaços
 try:
     escolas_df = pd.read_excel("etcs.xlsx")
@@ -41,7 +59,6 @@ CREATE TABLE IF NOT EXISTS coordenadores (
 conn.commit()
 
 # Logo e título centralizados
-
 def get_image_base64(img):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
@@ -57,6 +74,13 @@ st.markdown(f"""
         <h1>Cadastro de Coordenadores - Vestibulinho ETEC 2025.2</h1>
     </div>
 """, unsafe_allow_html=True)
+
+# Se for admin, mostrar painel
+if tipo_usuario == "admin":
+    st.subheader("📊 Painel Administrativo")
+    df_admin = pd.read_sql_query("SELECT * FROM coordenadores", conn)
+    st.dataframe(df_admin)
+    st.download_button("📥 Exportar para CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
 
 # Filtros dinâmicos fora do form
 st.subheader("Informações da Unidade Escolar")

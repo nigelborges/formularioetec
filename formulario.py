@@ -3,9 +3,13 @@ import sqlite3
 import re
 import pandas as pd
 
-# Carregar escolas e limpar espaços
-escolas_df = pd.read_excel("etcs.xlsx")
-escolas_df = escolas_df.astype(str).apply(lambda x: x.str.strip())
+# Carregar escolas com limpeza de espaços
+try:
+    escolas_df = pd.read_excel("etcs.xlsx")
+    escolas_df = escolas_df.astype(str).apply(lambda x: x.str.strip())
+except Exception as e:
+    st.error(f"Erro ao carregar etcs.xlsx: {e}")
+    st.stop()
 
 # Banco de dados
 conn = sqlite3.connect("etec.db", check_same_thread=False)

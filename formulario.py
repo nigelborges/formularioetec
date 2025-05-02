@@ -92,7 +92,11 @@ st.markdown(f"""
 # AÇÕES DO ADMINISTRADOR NA SIDEBAR
 st.sidebar.markdown("## 📋 Ações Administrativas")
 if tipo_usuario == "admin":
-    acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Editar Cadastro", "Excluir Cadastro"])
+    acao = acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Editar Cadastro", "Excluir Cadastro"], key="acao_admin")
+if st.sidebar.button("🚪 Sair"):
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    st.rerun()
 else:
     acao = "Adicionar Novo"
 
@@ -223,3 +227,9 @@ if acao == "Adicionar Novo":
                             ))
                             conn.commit()
                             st.success("Cadastro realizado com sucesso!")
+st.markdown("""
+    <div style='text-align: center; margin-top: 2em;'>
+        <h3 style='color: green;'>✅ Tudo certo!</h3>
+        <p>Seu cadastro foi registrado com sucesso no sistema.</p>
+    </div>
+""", unsafe_allow_html=True)

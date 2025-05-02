@@ -14,8 +14,9 @@ usuarios = {
 
 # LOGIN CENTRALIZADO
 if "usuario" not in st.session_state:
-    st.markdown("""
+    st.markdown(f"""
         <div style='text-align: center;'>
+            <img src='data:image/png;base64,{logo_base64}' width='250'>
             <h2>🔐 Acesso ao Sistema</h2>
         </div>
     """, unsafe_allow_html=True)
@@ -227,11 +228,14 @@ if acao == "Adicionar Novo":
                             ))
                             conn.commit()
                             st.success("Cadastro realizado com sucesso!")
-                            if st.button("Novo Cadastro"):
-                                st.rerun()
-        st.markdown("""
-            <div style='text-align: center; margin-top: 2em;'>
-                <h3 style='color: green;'>✅ Tudo certo!</h3>
-                <p>Seu cadastro foi registrado com sucesso no sistema.</p>
-            </div>
-        """, unsafe_allow_html=True)
+                            st.markdown("""
+                                <div style='text-align: center; margin-top: 2em;'>
+                                    <h3 style='color: green;'>✅ Tudo certo!</h3>
+                                    <p>Seu cadastro foi registrado com sucesso no sistema.</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            import time
+                            time.sleep(5)
+                            st.rerun() if hasattr(st, "rerun") else st.experimental_rerun()
+        

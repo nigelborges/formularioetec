@@ -40,7 +40,7 @@ if "usuario" not in st.session_state:
         if usuario_logado and senha_input == usuario_logado["senha"]:
             st.session_state.usuario = usuario_input
             st.session_state.tipo = usuario_logado["tipo"]
-            st.rerun() if hasattr(st, "rerun") else st.experimental_rerun()
+            st.rerun() if hasattr(st, "rerun") else st.rerun()
         else:
             st.error("Usuário ou senha inválidos.")
     st.stop()

@@ -18,10 +18,14 @@ senha_input = st.sidebar.text_input("Senha", type="password")
 
 usuario_logado = usuarios.get(usuario_input)
 
-if usuario_logado and senha_input == usuario_logado["senha"]:
-    tipo_usuario = usuario_logado["tipo"]
+if usuario_input and senha_input:
+    if usuario_logado and senha_input == usuario_logado["senha"]:
+        tipo_usuario = usuario_logado["tipo"]
+    else:
+        st.error("Usuário ou senha inválidos.")
+        st.stop()
 else:
-    st.warning("Informe usuário e senha válidos para acessar.")
+    st.warning("Informe usuário e senha para acessar o sistema.")
     st.stop()
 
 # Carregar escolas com limpeza de espaços

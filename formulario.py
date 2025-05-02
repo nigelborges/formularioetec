@@ -1,9 +1,14 @@
 import streamlit as st
 import sqlite3
 import re
+import pandas as pd
 
-db = sqlite3.connect("etec.db", check_same_thread=False)
-cursor = db.cursor()
+# Carregar escolas
+escolas_df = pd.read_excel("etcs.xlsx")
+
+# Banco de dados
+conn = sqlite3.connect("etec.db", check_same_thread=False)
+cursor = conn.cursor()
 
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS coordenadores (
@@ -25,9 +30,16 @@ CREATE TABLE IF NOT EXISTS coordenadores (
     observacoes TEXT
 )
 ''')
-db.commit()
+conn.commit()
 
 st.title("Cadastro de Coordenadores - Vestibulinho ETEC 2025.2")
+
+# Botões de exportação e visualização
+with st.expander("📄 Visualizar Cadastros e Exportar"):
+    df = pd.read_sql_query("SELECT * FROM coordenadores", conn)
+    st.dataframe(df)
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Baixar CSV", csv, "coordenadores.csv", "text/csv")
 
 with st.form("form"):
     st.subheader("Dados Pessoais")
@@ -43,8 +55,21 @@ with st.form("form"):
     chave_pix = st.text_input("Chave Pix")
 
     st.subheader("Informações da Unidade Escolar")
-    unidade = st.text_input("Nome da Unidade (ETEC)")
-    endereco = st.text_input("Endereço completo da Unidade")
+    regioes = sorted(escolas_df['Região Administrativa'].dropna().unique())
+    regiao_default = regioes.index("Metropolitana de São Paulo") if "Metropolitana de São Paulo" in regioes else 0
+    regiao_sel = st.selectbox("Região Administrativa", regioes, index=regiao_default)
+
+    municipios = sorted(escolas_df[escolas_df['Região Administrativa'] == regiao_sel]['Município'].dropna().unique())
+    municipio_default = municipios.index("São Bernardo do Campo") if "São Bernardo do Campo" in municipios else 0
+    municipio_sel = st.selectbox("Município", municipios, index=municipio_default)
+
+    unidades = escolas_df[(escolas_df['Região Administrativa'] == regiao_sel) &
+                           (escolas_df['Município'] == municipio_sel)][['Unidade', 'Endereço']]
+    unidade_list = list(unidades['Unidade'])
+    unidade_default = unidade_list.index("Etec Lauro Gomes") if "Etec Lauro Gomes" in unidade_list else 0
+    unidade_sel = st.selectbox("Unidade (ETEC)", unidade_list, index=unidade_default)
+    endereco = unidades.set_index('Unidade').loc[unidade_sel]['Endereço']
+    st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
 
     st.subheader("Funções no Processo Seletivo")
     centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"])
@@ -75,8 +100,8 @@ with st.form("form"):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
-                unidade, endereco, centro_distribuicao, coordenador_prova,
+                unidade_sel, endereco, centro_distribuicao, coordenador_prova,
                 ", ".join(divulgacao), outros_meios, observacoes
             ))
-            db.commit()
+            conn.commit()
             st.success("Cadastro realizado com sucesso!")

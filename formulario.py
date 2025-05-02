@@ -106,9 +106,70 @@ if st.sidebar.button("🚪 Sair"):
 # AÇÃO: VISUALIZAR TABELA
 if acao == "Visualizar Cadastros":
     st.subheader("📊 Tabela de Cadastros")
-    df_admin = pd.read_sql_query("SELECT id, nome, cpf, telefone, unidade FROM coordenadores", conn)
+    df_admin = pd.read_sql_query("SELECT * FROM coordenadores", conn)
     st.dataframe(df_admin)
     st.sidebar.download_button("📅 Exportar CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
+
+# AÇÃO: EDITAR CADASTRO
+if acao == "Editar Cadastro":
+    st.subheader("✏️ Editar Cadastro Existente")
+    cadastros = pd.read_sql_query("SELECT id, nome, cpf FROM coordenadores", conn)
+    cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
+    selecionado = st.selectbox("Selecione um cadastro para editar:", cadastros['display'])
+
+    if selecionado:
+        id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
+        dados = pd.read_sql_query(f"SELECT * FROM coordenadores WHERE id = {id_sel}", conn).iloc[0]
+
+        with st.form("form_edicao"):
+            nome = st.text_input("Nome completo", value=dados["nome"])
+            telefone = st.text_input("Telefone de contato", value=dados["telefone"])
+            cpf = st.text_input("CPF", value=dados["cpf"])
+            banco = st.text_input("Banco", value=dados["banco"])
+            agencia = st.text_input("Agência", value=dados["agencia"])
+            conta = st.text_input("Conta (com dígito)", value=dados["conta"])
+            tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"], index=["CPF", "Telefone", "E-mail", "Aleatória"].index(dados["tipo_chave"]))
+            chave_pix = st.text_input("Chave Pix", value=dados["chave_pix"])
+            centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["centro_distribuicao"]))
+            coordenador_prova = st.radio("Você será Coordenador de Local de Prova?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["coordenador_prova"]))
+            divulgacao_lista = [d.strip() for d in dados["divulgacao"].split(",")] if dados["divulgacao"] else []
+            divulgacao = st.multiselect("Meio(s) de Divulgação mais efetivo(s) para o Vestibulinho", [
+                "Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers",
+                "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"], default=divulgacao_lista)
+            outros_meios = st.text_input("Quais?", value=dados["outros_meios"])
+            observacoes = st.text_area("Observações e Sugestões", value=dados["observacoes"])
+
+            salvar = st.form_submit_button("💾 Atualizar Cadastro")
+            if salvar:
+                cursor.execute("""
+                    UPDATE coordenadores SET
+                        nome = ?, telefone = ?, cpf = ?, banco = ?, agencia = ?, conta = ?,
+                        tipo_chave = ?, chave_pix = ?, centro_distribuicao = ?, coordenador_prova = ?,
+                        divulgacao = ?, outros_meios = ?, observacoes = ?
+                    WHERE id = ?
+                """, (
+                    nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
+                    centro_distribuicao, coordenador_prova, ", ".join(divulgacao), outros_meios,
+                    observacoes, id_sel
+                ))
+                conn.commit()
+                st.success("Cadastro atualizado com sucesso!")
+                st.experimental_rerun()
+
+# AÇÃO: EXCLUIR CADASTRO
+if acao == "Excluir Cadastro":
+    st.subheader("🗑️ Excluir Cadastro")
+    cadastros = pd.read_sql_query("SELECT id, nome, cpf FROM coordenadores", conn)
+    cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
+    selecionado = st.selectbox("Selecione um cadastro para excluir:", cadastros['display'])
+
+    if selecionado:
+        id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
+        if st.button("❌ Confirmar Exclusão"):
+            cursor.execute("DELETE FROM coordenadores WHERE id = ?", (id_sel,))
+            conn.commit()
+            st.success("Cadastro excluído com sucesso!")
+            st.experimental_rerun()
 
 # AÇÃO: ADICIONAR NOVO
 if acao == "Adicionar Novo":

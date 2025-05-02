@@ -60,7 +60,7 @@ except Exception as e:
 
 # Banco de dados
 import os
-db_path = os.path.join(os.getcwd(), "etec.db")
+db_path = os.path.abspath("etec.db")
 st.write(f"📁 Banco de dados em: {db_path}")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 cursor = conn.cursor()
@@ -102,9 +102,14 @@ if tipo_usuario == "admin":
     if st.sidebar.button("🧨 Zerar todos os cadastros"):
         st.sidebar.warning("⚠️ Esta ação apagará todos os cadastros do sistema. Confirme abaixo.")
         if st.sidebar.button("❌ Confirmar exclusão total"):
-            cursor.execute("DELETE FROM coordenadores")
+            with open("exclusao_total.log", "a") as log:
+                log.write(f"Exclusão total realizada por {usuario_input} (tipo: {tipo_usuario})
+")
+                        cursor.execute("DELETE FROM coordenadores"
             conn.commit()
             st.sidebar.success("Todos os cadastros foram apagados.")
+            df_vazio = pd.read_sql_query("SELECT * FROM coordenadores", conn)
+            st.sidebar.dataframe(df_vazio)
             st.rerun()
     acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Editar Cadastro", "Excluir Cadastro"], key="acao_admin")
 else:

@@ -42,6 +42,23 @@ with st.expander("📄 Visualizar Cadastros e Exportar"):
     st.download_button("📥 Baixar CSV", csv, "coordenadores.csv", "text/csv")
 
 with st.form("form"):
+    st.subheader("Informações da Unidade Escolar")
+    regioes = sorted(escolas_df['Região Administrativa'].dropna().unique())
+    regiao_default = regioes.index("Metropolitana de São Paulo") if "Metropolitana de São Paulo" in regioes else 0
+    regiao_sel = st.selectbox("Região Administrativa", regioes, index=regiao_default)
+
+    municipios_df = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
+    municipios = sorted(municipios_df['Município'].dropna().unique())
+    municipio_default = municipios.index("São Bernardo do Campo") if "São Bernardo do Campo" in municipios else 0
+    municipio_sel = st.selectbox("Município", municipios, index=municipio_default)
+
+    unidades_df = municipios_df[municipios_df['Município'] == municipio_sel][['Unidade', 'Endereço']]
+    unidade_list = list(unidades_df['Unidade'])
+    unidade_default = unidade_list.index("Etec Lauro Gomes") if "Etec Lauro Gomes" in unidade_list else 0
+    unidade_sel = st.selectbox("Unidade (ETEC)", unidade_list, index=unidade_default)
+    endereco = unidades_df.set_index('Unidade').loc[unidade_sel]['Endereço']
+    st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
+
     st.subheader("Dados Pessoais")
     nome = st.text_input("Nome completo")
     telefone = st.text_input("Telefone de contato (apenas números)")
@@ -53,23 +70,6 @@ with st.form("form"):
     conta = st.text_input("Conta (com dígito)")
     tipo_chave = st.selectbox("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"])
     chave_pix = st.text_input("Chave Pix")
-
-    st.subheader("Informações da Unidade Escolar")
-    regioes = sorted(escolas_df['Região Administrativa'].dropna().unique())
-    regiao_default = regioes.index("Metropolitana de São Paulo") if "Metropolitana de São Paulo" in regioes else 0
-    regiao_sel = st.selectbox("Região Administrativa", regioes, index=regiao_default)
-
-    municipios = sorted(escolas_df[escolas_df['Região Administrativa'] == regiao_sel]['Município'].dropna().unique())
-    municipio_default = municipios.index("São Bernardo do Campo") if "São Bernardo do Campo" in municipios else 0
-    municipio_sel = st.selectbox("Município", municipios, index=municipio_default)
-
-    unidades = escolas_df[(escolas_df['Região Administrativa'] == regiao_sel) &
-                           (escolas_df['Município'] == municipio_sel)][['Unidade', 'Endereço']]
-    unidade_list = list(unidades['Unidade'])
-    unidade_default = unidade_list.index("Etec Lauro Gomes") if "Etec Lauro Gomes" in unidade_list else 0
-    unidade_sel = st.selectbox("Unidade (ETEC)", unidade_list, index=unidade_default)
-    endereco = unidades.set_index('Unidade').loc[unidade_sel]['Endereço']
-    st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
 
     st.subheader("Funções no Processo Seletivo")
     centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"])

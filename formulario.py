@@ -12,21 +12,31 @@ usuarios = {
     "usuario1": {"senha": "123", "tipo": "comum"},
 }
 
-st.sidebar.header("🔐 Login")
-usuario_input = st.sidebar.text_input("Usuário")
-senha_input = st.sidebar.text_input("Senha", type="password")
+# LOGIN CENTRALIZADO
+if "usuario" not in st.session_state:
+    st.markdown("""
+        <div style='text-align: center;'>
+            <h2>🔐 Acesso ao Sistema</h2>
+        </div>
+    """, unsafe_allow_html=True)
+    with st.form("login_form"):
+        usuario_input = st.text_input("Usuário")
+        senha_input = st.text_input("Senha", type="password")
+        login_submit = st.form_submit_button("Entrar")
 
-usuario_logado = usuarios.get(usuario_input)
-
-if usuario_input and senha_input:
-    if usuario_logado and senha_input == usuario_logado["senha"]:
-        tipo_usuario = usuario_logado["tipo"]
-    else:
-        st.error("Usuário ou senha inválidos.")
-        st.stop()
-else:
-    st.warning("Informe usuário e senha para acessar o sistema.")
+    if login_submit:
+        usuario_logado = usuarios.get(usuario_input)
+        if usuario_logado and senha_input == usuario_logado["senha"]:
+            st.session_state.usuario = usuario_input
+            st.session_state.tipo = usuario_logado["tipo"]
+            st.experimental_rerun()
+        else:
+            st.error("Usuário ou senha inválidos.")
     st.stop()
+
+# VARIÁVEIS DE SESSÃO
+usuario_input = st.session_state.usuario
+tipo_usuario = st.session_state.tipo
 
 # Carregar escolas com limpeza de espaços
 try:
@@ -79,13 +89,22 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# Se for admin, mostrar painel
+# AÇÕES DO ADMINISTRADOR NA SIDEBAR
+st.sidebar.markdown("## 📋 Ações Administrativas")
 if tipo_usuario == "admin":
-    st.subheader("📊 Painel Administrativo")
-    df_admin = pd.read_sql_query("SELECT * FROM coordenadores", conn)
-    st.dataframe(df_admin)
-    st.download_button("📥 Exportar para CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
+    acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Excluir Cadastro"])
+else:
+    acao = "Adicionar Novo"
 
+# AÇÃO: VISUALIZAR TABELA
+if acao == "Visualizar Cadastros":
+    st.subheader("📊 Tabela de Cadastros")
+    df_admin = pd.read_sql_query("SELECT id, nome, cpf, telefone, unidade FROM coordenadores", conn)
+    st.dataframe(df_admin)
+    st.sidebar.download_button("📥 Exportar CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
+
+# AÇÃO: EXCLUIR CADASTRO
+elif acao == "Excluir Cadastro" and tipo_usuario == "admin":
     st.subheader("🗑️ Excluir Cadastro de ETEC")
     df_cadastrados = pd.read_sql_query("SELECT id, unidade FROM coordenadores", conn)
     etecs_cadastradas = df_cadastrados['unidade'].unique().tolist()
@@ -96,30 +115,30 @@ if tipo_usuario == "admin":
             cursor.execute("DELETE FROM coordenadores WHERE unidade = ?", (unidade_excluir,))
             conn.commit()
             st.success(f"Cadastro da unidade '{unidade_excluir}' foi removido.")
+            st.experimental_rerun()
     else:
         st.info("Nenhuma unidade cadastrada no momento.")
 
-# Filtros dinâmicos fora do form
-st.subheader("Informações da Unidade Escolar")
-regioes = ["-- selecione --"] + sorted(escolas_df['Região Administrativa'].unique())
-regiao_sel = st.selectbox("Região Administrativa", regioes)
+# AÇÃO: ADICIONAR NOVO (ou usuário comum)
+if acao == "Adicionar Novo":
+    st.subheader("Informações da Unidade Escolar")
+    regioes = ["-- selecione --"] + sorted(escolas_df['Região Administrativa'].unique())
+    regiao_sel = st.selectbox("Região Administrativa", regioes)
 
-if regiao_sel != "-- selecione --":
-    df_municipios = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
-    municipios = ["-- selecione --"] + sorted(df_municipios['Município'].unique())
-    municipio_sel = st.selectbox("Município", municipios)
+    if regiao_sel != "-- selecione --":
+        df_municipios = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
+        municipios = ["-- selecione --"] + sorted(df_municipios['Município'].unique())
+        municipio_sel = st.selectbox("Município", municipios)
 
-    if municipio_sel != "-- selecione --":
-        df_unidades = df_municipios[df_municipios['Município'] == municipio_sel]
-        unidades = ["-- selecione --"] + sorted(df_unidades['Unidade'].unique())
-        unidade_sel = st.selectbox("Unidade (ETEC)", unidades)
+        if municipio_sel != "-- selecione --":
+            df_unidades = df_municipios[df_municipios['Município'] == municipio_sel]
+            unidades = ["-- selecione --"] + sorted(df_unidades['Unidade'].unique())
+            unidade_sel = st.selectbox("Unidade (ETEC)", unidades)
 
-        if unidade_sel != "-- selecione --":
-            endereco = df_unidades[df_unidades['Unidade'] == unidade_sel]['Endereço'].values[0]
-            st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
+            if unidade_sel != "-- selecione --":
+                endereco = df_unidades[df_unidades['Unidade'] == unidade_sel]['Endereço'].values[0]
+                st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
 
-            if tipo_usuario != "admin":
-                # Formulário principal
                 with st.form("form"):
                     st.subheader("Dados Pessoais")
                     nome = st.text_input("Nome completo")
@@ -147,7 +166,7 @@ if regiao_sel != "-- selecione --":
 
                     observacoes = st.text_area("Observações e Sugestões")
 
-                    submitted = st.form_submit_button("Enviar")
+                    submitted = st.form_submit_button("Salvar Cadastro")
 
                     if submitted:
                         if not (re.fullmatch(r'\d{11}', cpf) and re.fullmatch(r'\d{10,11}', telefone)):

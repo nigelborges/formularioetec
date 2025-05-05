@@ -1,287 +1,355 @@
 import streamlit as st
-import sqlite3
-import re
 import pandas as pd
-from PIL import Image
-import base64
-from io import BytesIO
+import sqlite3
 
-# ==== LOGO BASE64 PRE-CARREGADA ====
-def get_image_base64(img):
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    img_bytes = buffered.getvalue()
-    return base64.b64encode(img_bytes).decode()
+st.set_page_config(page_title="Sistema Escolar - Acesso", layout="centered")
 
-logo = Image.open("idecan.png")
-logo_base64 = get_image_base64(logo)
+# Acesso direto como usuário comum
+if 'usuario' not in st.session_state:
+    st.session_state['usuario'] = {'id': -1, 'nome': 'visitante', 'nivel': 'cadastrador'}
 
-# ==== USUÁRIOS E SENHAS ====
-usuarios = {
-    "admin": {"senha": "IDECAN2025", "tipo": "admin"},
-    "cadastro": {"senha": "idecan123", "tipo": "comum"},
-    "usuario1": {"senha": "123", "tipo": "comum"},
-}
+# Botão para login como admin
+with st.sidebar:
+    if st.button("🔐 Logar como Administrador"):
+        with st.form("login_admin"):
+            usuario_input = st.text_input("Usuário")
+            senha_input = st.text_input("Senha", type="password")
+            if st.form_submit_button("Entrar"):
+                if usuario_input == 'admin' and senha_input == '1234':
+                    st.session_state['usuario'] = {'id': 0, 'nome': 'admin', 'nivel': 'admin'}
+                    st.rerun()
+                else:
+                    st.error("Credenciais inválidas.")
 
-# LOGIN CENTRALIZADO
-if "usuario" not in st.session_state:
-    st.markdown(f"""
-        <div style='text-align: center;'>
-            <img src='data:image/png;base64,{logo_base64}' width='250'>
-            <h2>🔐 Acesso ao Sistema</h2>
-        </div>
-    """, unsafe_allow_html=True)
-    with st.form("login_form"):
-        usuario_input = st.text_input("Usuário")
-        senha_input = st.text_input("Senha", type="password")
-        login_submit = st.form_submit_button("Entrar")
+USUARIO_VALIDO = 'admin'
+SENHA_VALIDA = '1234'
 
-    if login_submit:
-        usuario_logado = usuarios.get(usuario_input)
-        if usuario_logado and senha_input == usuario_logado["senha"]:
-            st.session_state.usuario = usuario_input
-            st.session_state.tipo = usuario_logado["tipo"]
-            st.rerun() if hasattr(st, "rerun") else st.rerun()
-        else:
-            st.error("Usuário ou senha inválidos.")
-    st.stop()
 
-# VARIÁVEIS DE SESSÃO
-usuario_input = st.session_state.usuario
-tipo_usuario = st.session_state.tipo
 
-# Carregar escolas com limpeza de espaços
-try:
-    escolas_df = pd.read_excel("etcs.xlsx")
-    escolas_df = escolas_df.astype(str).apply(lambda x: x.str.strip())
-except Exception as e:
-    st.error(f"Erro ao carregar etcs.xlsx: {e}")
-    st.stop()
 
-# Banco de dados
 import os
-db_path = os.path.abspath("etec.db")
-st.write(f"📁 Banco de dados em: {db_path}")
-conn = sqlite3.connect(db_path, check_same_thread=False)
-cursor = conn.cursor()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS coordenadores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT,
-    telefone TEXT,
-    cpf TEXT,
-    banco TEXT,
-    agencia TEXT,
-    conta TEXT,
-    tipo_chave TEXT,
-    chave_pix TEXT,
-    unidade TEXT,
-    endereco TEXT,
-    centro_distribuicao TEXT,
-    coordenador_prova TEXT,
-    divulgacao TEXT,
-    outros_meios TEXT,
-    observacoes TEXT
-)
+DB_FILE = 'escolas.db'
+
+# Criar o banco e tabelas, se não existirem
+import sqlite3
+conn = sqlite3.connect(DB_FILE)
+conn.execute("""
+    CREATE TABLE IF NOT EXISTS escolas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        endereco TEXT NOT NULL,
+        usuario_id INTEGER,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+""")
+conn.execute("""
+    CREATE TABLE IF NOT EXISTS salas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        escola_id INTEGER,
+        nome_sala TEXT,
+        bloco TEXT,
+        andar TEXT,
+        candidatos_sala INTEGER,
+        FOREIGN KEY (escola_id) REFERENCES escolas(id)
+    )
 """)
 conn.commit()
-            # st.write(f"[LOG] ...")  # Removido do ambiente de produção
+conn.close()
 
-# Interface principal
-st.markdown(f"""
-    <div style='text-align: center;'>
-        <img src='data:image/png;base64,{logo_base64}' width='400'>
-        <h1>Cadastro de Coordenadores - Vestibulinho ETEC 2025.2</h1>
-    </div>
-""", unsafe_allow_html=True)
+SAVE_FILE = 'escolas_salvas.csv'
 
-# AÇÕES DO ADMINISTRADOR NA SIDEBAR
-st.sidebar.markdown("## 📋 Ações Administrativas")
-if tipo_usuario == "admin":
-    if st.sidebar.button("🧨 Zerar todos os cadastros"):
-        st.sidebar.warning("⚠️ Esta ação apagará todos os cadastros do sistema. Confirme abaixo.")
-        if st.sidebar.button("❌ Confirmar exclusão total"):
-            
-            cursor.execute("DELETE FROM coordenadores")
-            conn.commit()
-            st.sidebar.success("Todos os cadastros foram apagados.")
-            df_vazio = pd.read_sql_query("SELECT * FROM coordenadores", conn)
-            st.sidebar.dataframe(df_vazio)
-            st.rerun()
-    acao = st.sidebar.radio("Escolha uma ação:", ["Visualizar Cadastros", "Adicionar Novo", "Editar Cadastro", "Excluir Cadastro"], key="acao_admin")
+def salvar_escola_banco(nome, endereco, salas, editar_id=None):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    usuario_id = st.session_state['usuario']['id']
+
+    if editar_id is not None:
+        cursor.execute("UPDATE escolas SET nome = ?, endereco = ? WHERE id = ?", (nome, endereco, editar_id))
+        cursor.execute("DELETE FROM salas WHERE escola_id = ?", (editar_id,))
+        escola_id = editar_id
+    else:
+        cursor.execute("INSERT INTO escolas (nome, endereco, usuario_id) VALUES (?, ?, ?)", (nome, endereco, usuario_id))
+        escola_id = cursor.lastrowid
+
+    for sala in salas:
+        cursor.execute("""
+            INSERT INTO salas (escola_id, nome_sala, bloco, andar, candidatos_sala)
+            VALUES (?, ?, ?, ?, ?)
+        """, (escola_id, sala['nome_sala'], sala['bloco'], sala['andar'], sala['candidatos_sala']))
+
+    conn.commit()
+    conn.close()
+
+def salvar_backup_csv():
+    df = exportar_dados_geral()
+    df.to_csv(SAVE_FILE, index=False)
+    st.toast("Backup salvo!")
+
+def carregar_escolas():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    usuario = st.session_state['usuario']
+    if usuario['nivel'] == 'admin':
+        cursor.execute("SELECT id, nome, endereco, usuario_id FROM escolas")
+    else:
+        cursor.execute("SELECT id, nome, endereco, usuario_id FROM escolas WHERE usuario_id = ?", (usuario['id'],))
+
+    dados = cursor.fetchall()
+    conn.close()
+    return pd.DataFrame(dados, columns=['id', 'nome', 'endereco', 'usuario_id']))
+    return pd.DataFrame(st.session_state['escolas'][escola_id]['salas'])
+
+def exportar_dados_por_escola(escola_id):
+    escola = carregar_escolas().loc[escola_id]
+    df_salas = carregar_salas_por_escola(escola_id)
+    candidatos = []
+    sala_ids = {}
+    id_sala_counter = 1
+    for i, sala in df_salas.iterrows():
+        nome = sala['nome_sala']
+        if nome not in sala_ids:
+            sala_ids[nome] = id_sala_counter
+            id_sala_counter += 1
+        id_sala = sala_ids[nome]
+        for ordem in range(1, sala['candidatos_sala'] + 1):
+            candidatos.append({
+                'ID Escola': escola_id,
+                'Nome Escola': escola['nome'],
+                'Endereco': escola['endereco'],
+                'ID Sala': id_sala,
+                'Nome da Sala': sala['nome_sala'],
+                'Bloco': sala['bloco'],
+                'Andar': sala['andar'],
+                'Ordem da Sala': i + 1,
+                'Numero de Salas': len(df_salas),
+                'Ordem do Candidato': ordem
+            })
+    return pd.DataFrame(candidatos)
+
+def exportar_dados_geral():
+    usuario_id = st.session_state['usuario']['id']
+    nivel = st.session_state['usuario']['nivel']
+
+    if nivel == 'admin':
+    df_escolas = carregar_escolas()
 else:
-    acao = "Adicionar Novo"
+    df_escolas = carregar_escolas()
+    df_escolas = df_escolas[df_escolas['usuario_id'] == usuario_id]
+    todos = []
+    for _, escola in df_escolas.iterrows():
+        df_salas = carregar_salas_por_escola(escola['id'])
+        id_sala_counter = 1
+        sala_ids = {}
+        for i, sala in df_salas.iterrows():
+            nome = sala['nome_sala']
+            if nome not in sala_ids:
+                sala_ids[nome] = id_sala_counter
+                id_sala_counter += 1
+            id_sala = sala_ids[nome]
+            for ordem in range(1, sala['candidatos_sala'] + 1):
+                todos.append({
+                    'ID Escola': escola['id'],
+                    'Nome Escola': escola['nome'],
+                    'Endereco': escola['endereco'],
+                    'ID Sala': id_sala,
+                    'Nome da Sala': sala['nome_sala'],
+                    'Bloco': sala['bloco'],
+                    'Andar': sala['andar'],
+                    'Ordem da Sala': i + 1,
+                    'Numero de Salas': len(df_salas),
+                    'Ordem do Candidato': ordem
+                })
+    return pd.DataFrame(todos)
 
-if st.sidebar.button("🚪 Sair"):
-    for k in list(st.session_state.keys()):
-        del st.session_state[k]
-    st.rerun()
+def visualizar():
+    st.image("https://www.idecan.org.br/assets/img/logo.png", use_container_width=True)
+    st.title("📦 Exportação de Escolas")
+    if st.session_state['usuario']['nivel'] == 'admin':
+        if st.button("📦 Exportar Todas as Escolas", use_container_width=True):
+            df_geral = exportar_dados_geral()
+            st.download_button(
+                "⬇️ Baixar CSV Geral",
+                df_geral.to_csv(index=False).encode('utf-8'),
+                file_name="todas_escolas.csv",
+                use_container_width=True
+            )
+    if st.session_state['usuario']['nivel'] == 'admin' and st.button("📦 Exportar Todas as Escolas", use_container_width=True):
+        df_geral = exportar_dados_geral()
+        st.download_button(
+            "⬇️ Baixar CSV Geral",
+            df_geral.to_csv(index=False).encode('utf-8'),
+            file_name="todas_escolas.csv",
+            use_container_width=True
+        )
 
-# AÇÃO: VISUALIZAR TABELA
-if acao == "Visualizar Cadastros":
-    st.subheader("📊 Tabela de Cadastros")
-    df_admin = pd.read_sql_query("SELECT * FROM coordenadores", conn)
-    st.dataframe(df_admin)
-    st.sidebar.download_button("📅 Exportar CSV", df_admin.to_csv(index=False), "cadastros.csv", "text/csv")
-    with open(db_path, "rb") as db_file:
-        st.sidebar.download_button("🧾 Baixar Banco de Dados", db_file, file_name="etec.db", mime="application/octet-stream")
+    st.title("📋 Escolas Cadastradas")
+    st.divider()
 
-# AÇÃO: EDITAR CADASTRO
-if acao == "Editar Cadastro":
-    st.subheader("✏️ Editar Cadastro Existente")
-    unidades_disponiveis = pd.read_sql_query("SELECT DISTINCT unidade FROM coordenadores ORDER BY unidade", conn)['unidade'].tolist()
-    unidade_filtrada = st.selectbox("Selecione a Unidade para editar registros:", unidades_disponiveis)
+    df_escolas = carregar_escolas()
+    if df_escolas.empty:
+        st.info("Nenhuma escola cadastrada.")
+        return
 
-    query = f"SELECT id, nome, cpf FROM coordenadores WHERE unidade = '{unidade_filtrada}'"
+    for idx, escola in df_escolas.iterrows():
+        with st.expander(f"🏫 {escola['nome']} - {escola['endereco']}"):
+            st.subheader(f"📄 Salas da escola {escola['nome']}")
+            st.caption(f"Endereço: {escola['endereco']}")
+            st.markdown("---")
+            st.write(f"ID: {idx + 1}")
+            df_salas = carregar_salas_por_escola(idx)
+            df_salas_visual = df_salas.copy()
+            id_sala_counter = 1
+            sala_ids = {}
+            id_salas = []
+            for _, sala in df_salas_visual.iterrows():
+                nome = sala['nome_sala']
+                if nome not in sala_ids:
+                    sala_ids[nome] = id_sala_counter
+                    id_sala_counter += 1
+                id_salas.append(sala_ids[nome])
+            df_salas_visual.insert(0, "ID Sala", id_salas)
+            df_salas_visual.insert(0, "ID Escola", idx + 1)
+            df_salas_visual.insert(1, "Nome Escola", escola['nome'])
+            df_salas_visual.insert(1, "Endereco", escola['endereco'])
+            st.dataframe(df_salas_visual)
+            col1, col2, col3 = st.columns([1, 1, 2])
+            with col1:
+                if st.button(f"✏️ Editar", key=f"editar_{idx}", use_container_width=True):
+                    st.session_state['modo_edicao'] = True
+                    st.session_state['escola_em_edicao'] = idx
+                    st.session_state['pagina_atual'] = "Cadastrar Escola"
+                    st.rerun()
+            with col2:
+                if st.button(f"🗑️ Excluir", key=f"excluir_{idx}", use_container_width=True):
+                    st.session_state['escolas'].pop(idx)
+                    salvar_backup_csv()
+                    st.experimental_rerun()
+            with col3:
+                if st.session_state['usuario']['nivel'] == 'admin':
+                    if st.button(f"📁 Exportar CSV", key=f"botao_exportar_{idx}", use_container_width=True):
+                        df_exportar = exportar_dados_por_escola(idx)
+                        st.download_button(
+                        "⬇️ Baixar CSV",
+                        df_exportar.to_csv(index=False).encode('utf-8'),
+                        file_name=f"escola_{idx}.csv",
+                        key=f"download_{idx}"
+                    )
 
-    cadastros = pd.read_sql_query(query, conn)
-    filtro_busca = st.text_input("Buscar por nome ou CPF:").strip().lower()
-    if filtro_busca:
-        cadastros = cadastros[cadastros.apply(lambda row: filtro_busca in row['nome'].lower() or filtro_busca in row['cpf'], axis=1)]
+def form_escola():
+    st.title("🏫 Cadastro de Escola")
+    st.divider()
+    editar_id = st.session_state.get("escola_em_edicao")
+    nome = ""
+    endereco = ""
+    num_salas = 1
+    salas_existentes = []
 
-    cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
-    selecionado = st.selectbox("Selecione um cadastro para editar:", cadastros['display'])
+    if editar_id and 'escolas' in st.session_state and editar_id < len(st.session_state['escolas']):
+        escola = st.session_state['escolas'][editar_id]
+        nome = escola['nome']
+        endereco = escola['endereco']
+        salas_existentes = escola['salas']
+        num_salas = len(salas_existentes)
 
-    if selecionado:
-        id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
-        dados = pd.read_sql_query(f"SELECT * FROM coordenadores WHERE id = {id_sel}", conn).iloc[0]
+    nome = st.text_input("Nome da Escola", value=nome)
+    endereco = st.text_input("Endereço", value=endereco)
+    num_salas = st.number_input("Quantidade de Salas", min_value=1, step=1, value=num_salas)
+    tipo = st.radio("Todas as salas têm os mesmos dados?", ["Sim", "Não"], index=0 if not salas_existentes else 1)
 
-        with st.form("form_edicao"):
-            nome = st.text_input("Nome completo", value=dados["nome"])
-            telefone = st.text_input("Telefone de contato", value=dados["telefone"])
-            cpf = st.text_input("CPF", value=dados["cpf"])
-            banco = st.text_input("Banco", value=dados["banco"])
-            agencia = st.text_input("Agência", value=dados["agencia"])
-            conta = st.text_input("Conta (com dígito)", value=dados["conta"])
-            tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"], index=["CPF", "Telefone", "E-mail", "Aleatória"].index(dados["tipo_chave"]))
-            chave_pix = st.text_input("Chave Pix", value=dados["chave_pix"])
-            centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["centro_distribuicao"]))
-            coordenador_prova = st.radio("Você será Coordenador de Local de Prova?", ["Sim", "Não"], index=["Sim", "Não"].index(dados["coordenador_prova"]))
-            divulgacao_lista = [d.strip() for d in dados["divulgacao"].split(",")] if dados["divulgacao"] else []
-            divulgacao = st.multiselect("Meio(s) de Divulgação mais efetivo(s) para o Vestibulinho", [
-                "Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers",
-                "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"], default=divulgacao_lista)
-            outros_meios = st.text_input("Quais?", value=dados["outros_meios"])
-            observacoes = st.text_area("Observações e Sugestões", value=dados["observacoes"])
+    salas = []
+    if tipo == "Sim":
+        base_nome = st.text_input("Nome base da Sala", value="Sala")
+        bloco = st.text_input("Bloco", value="A")
+        andar = st.text_input("Andar", value="Térreo")
+        candidatos = st.number_input("Candidatos por Sala", min_value=1, step=1, value=40)
+        for i in range(int(num_salas)):
+            salas.append({
+                "nome_sala": f"{base_nome} {i+1:02d}",
+                "bloco": bloco,
+                "andar": andar,
+                "candidatos_sala": candidatos
+            })
+    else:
+        if salas_existentes:
+            df_salas = pd.DataFrame(salas_existentes)[['nome_sala', 'bloco', 'andar', 'candidatos_sala']]
+        else:
+            df_salas = pd.DataFrame([{
+                "nome_sala": f"Sala {i+1:02d}",
+                "bloco": "A",
+                "andar": "Térreo",
+                "candidatos_sala": 40
+            } for i in range(int(num_salas))])
+        st.markdown("### Cadastro das Salas")
+        # aplicar ID Sala conforme nome
+        id_sala_counter = 1
+        sala_ids = {}
+        id_salas = []
+        for _, sala in df_salas.iterrows():
+            nome = sala['nome_sala']
+            if nome not in sala_ids:
+                sala_ids[nome] = id_sala_counter
+                id_sala_counter += 1
+            id_salas.append(sala_ids[nome])
+        df_salas.insert(0, 'ID Sala', id_salas)
+        df_editada = st.data_editor(df_salas, num_rows="dynamic", key="editor_salas")
+        salas = df_editada.to_dict("records")
 
-            salvar = st.form_submit_button("💾 Atualizar Cadastro")
-            if salvar:
-                cursor.execute("""
-                    UPDATE coordenadores SET
-                        nome = ?, telefone = ?, cpf = ?, banco = ?, agencia = ?, conta = ?,
-                        tipo_chave = ?, chave_pix = ?, centro_distribuicao = ?, coordenador_prova = ?,
-                        divulgacao = ?, outros_meios = ?, observacoes = ?
-                    WHERE id = ?
-                """, (
-                    nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
-                    centro_distribuicao, coordenador_prova, ", ".join(divulgacao), outros_meios,
-                    observacoes, id_sel
-                ))
-                conn.commit()
-                st.success("Cadastro atualizado com sucesso!")
-                st.rerun()
+    if st.button("Salvar Alterações" if editar_id else "Salvar Cadastro"):
+        if not nome or not endereco or any(not sala['nome_sala'] for sala in salas):
+            st.warning("Todos os campos são obrigatórios.")
+        else:
+            salvar_escola_banco(nome, endereco, salas, editar_id=editar_id)
+            st.success("Escola atualizada com sucesso!" if editar_id else "Escola cadastrada com sucesso!")
+            st.session_state['modo_edicao'] = False
+            salvar_backup_csv()
+            st.session_state['escola_em_edicao'] = None
 
-# AÇÃO: EXCLUIR CADASTRO
-if acao == "Excluir Cadastro":
-    st.subheader("🗑️ Excluir Cadastro")
-    unidades_disponiveis = pd.read_sql_query("SELECT DISTINCT unidade FROM coordenadores ORDER BY unidade", conn)['unidade'].tolist()
-    unidade_filtrada = st.selectbox("Selecione a Unidade para excluir registros:", unidades_disponiveis)
+def mostrar_menu():
+    st.sidebar.title("Menu")
+    opcao = st.sidebar.radio("Navegação", ["Cadastrar Escola", "Visualizar Escolas", "Limpar Todas"], index=0)
+    if opcao == "Cadastrar Escola":
+        form_escola()
+    elif opcao == "Visualizar Escolas":
+        visualizar()
+    elif opcao == "Limpar Todas":
+        st.warning("Esta ação apagará todas as escolas cadastradas.")
+        if st.button("⚠️ Confirmar Limpeza Total", type="primary"):
+            st.session_state['escolas'] = []
+            salvar_backup_csv()
+            st.success("Todos os dados foram apagados.")
+            st.experimental_rerun()
+    
 
-    query = f"SELECT id, nome, cpf FROM coordenadores WHERE unidade = '{unidade_filtrada}'"
+if os.path.exists(SAVE_FILE):
+    try:
+        df_loaded = pd.read_csv(SAVE_FILE)
+        escolas_dict = {}
+        for _, row in df_loaded.iterrows():
+            key = (row['ID Escola'], row['Nome Escola'], row['Endereco'])
+            if key not in escolas_dict:
+                escolas_dict[key] = []
+            escolas_dict[key].append({
+                'nome_sala': row['Nome da Sala'],
+                'bloco': row['Bloco'],
+                'andar': row['Andar'],
+                'candidatos_sala': row['Ordem do Candidato']
+            })
+        st.session_state['escolas'] = [
+            {'nome': k[1], 'endereco': k[2], 'salas': v}
+            for k, v in escolas_dict.items()
+        ]
+    except Exception as e:
+        pass  # Silencia erros de leitura do CSV sem interferir na execução
 
-    cadastros = pd.read_sql_query(query, conn)
-    filtro_busca = st.text_input("Buscar por nome ou CPF:").strip().lower()
-    if filtro_busca:
-        cadastros = cadastros[cadastros.apply(lambda row: filtro_busca in row['nome'].lower() or filtro_busca in row['cpf'], axis=1)]
-
-    cadastros['display'] = cadastros['nome'] + " - CPF: " + cadastros['cpf']
-    selecionado = st.selectbox("Selecione um cadastro para excluir:", cadastros['display'])
-
-    if selecionado:
-        id_sel = cadastros[cadastros['display'] == selecionado]['id'].values[0]
-        with st.form("form_excluir"):
-            st.warning("⚠️ Esta ação é irreversível. Tem certeza que deseja excluir este cadastro?")
-            confirmar = st.form_submit_button("❌ Confirmar Exclusão")
-            if confirmar:
-                cursor.execute("DELETE FROM coordenadores WHERE id = ?", (id_sel,))
-                conn.commit()
-                st.success("Cadastro excluído com sucesso!")
-                st.rerun()
-
-# AÇÃO: ADICIONAR NOVO
-if acao == "Adicionar Novo":
-    st.subheader("Informações da Unidade Escolar")
-    regioes = ["-- selecione --"] + sorted(escolas_df['Região Administrativa'].unique())
-    regiao_sel = st.selectbox("Região Administrativa", regioes)
-
-    if regiao_sel != "-- selecione --":
-        df_municipios = escolas_df[escolas_df['Região Administrativa'] == regiao_sel]
-        municipios = ["-- selecione --"] + sorted(df_municipios['Município'].unique())
-        municipio_sel = st.selectbox("Município", municipios)
-
-        if municipio_sel != "-- selecione --":
-            df_unidades = df_municipios[df_municipios['Município'] == municipio_sel]
-            unidades = ["-- selecione --"] + sorted(df_unidades['Unidade'].unique())
-            unidade_sel = st.selectbox("Unidade (ETEC)", unidades)
-
-            if unidade_sel != "-- selecione --":
-                endereco = df_unidades[df_unidades['Unidade'] == unidade_sel]['Endereço'].values[0]
-                st.text_input("Endereço completo da Unidade", value=endereco, disabled=True)
-
-                with st.form("form"):
-                    st.subheader("Dados Pessoais")
-                    nome = st.text_input("Nome completo")
-                    telefone = st.text_input("Telefone de contato", max_chars=15)
-                    cpf = st.text_input("CPF", max_chars=14)
-
-                    st.subheader("Dados Bancários")
-                    banco = st.text_input("Banco")
-                    agencia = st.text_input("Agência")
-                    conta = st.text_input("Conta (com dígito)")
-                    tipo_chave = st.radio("Tipo de chave Pix", ["CPF", "Telefone", "E-mail", "Aleatória"])
-                    chave_pix = st.text_input("Chave Pix")
-
-                    st.subheader("Funções no Processo Seletivo")
-                    centro_distribuicao = st.radio("Sua unidade gostaria de ser Centro de Distribuição?", ["Sim", "Não"])
-                    coordenador_prova = st.radio("Você será Coordenador de Local de Prova?", ["Sim", "Não"])
-
-                    divulgacao = st.multiselect("Meio(s) de Divulgação mais efetivo(s) para o Vestibulinho", [
-                        "Tráfego Pago", "Propaganda em TV", "Distribuição Física de Panfletos e Flyers",
-                        "Cartazes/Banners em Locais de Grande Circulação", "Busdoor/Outdoor", "Outros"], max_selections=2)
-
-                    outros_meios = ""
-                    if "Outros" in divulgacao:
-                        outros_meios = st.text_input("Quais?")
-
-                    observacoes = st.text_area("Observações e Sugestões")
-
-                    submitted = st.form_submit_button("Salvar Cadastro")
-                    if submitted:
-                        if not (re.fullmatch(r'\d{11}', cpf.replace('.', '').replace('-', '')) and re.fullmatch(r'\d{10,11}', telefone.replace('(', '').replace(')', '').replace('-', '').replace(' ', ''))):
-                            st.error("CPF ou telefone inválido. Verifique e tente novamente.")
-                        else:
-                            cursor.execute("""
-                                INSERT INTO coordenadores (
-                                    nome, telefone, cpf, banco, agencia, conta,
-                                    tipo_chave, chave_pix, unidade, endereco,
-                                    centro_distribuicao, coordenador_prova, divulgacao,
-                                    outros_meios, observacoes
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                nome, telefone, cpf, banco, agencia, conta, tipo_chave, chave_pix,
-                                unidade_sel, endereco, centro_distribuicao, coordenador_prova,
-                                ", ".join(divulgacao), outros_meios, observacoes
-                            ))
-                            conn.commit()
-                            st.write(f"[LOG] Novo cadastro salvo: {nome} - CPF: {cpf}")
-                            st.success("Cadastro realizado com sucesso!")
-                            st.markdown("""
-                                <div style='text-align: center; margin-top: 2em;'>
-                                    <h3 style='color: green;'>✅ Tudo certo!</h3>
-                                    <p>Seu cadastro foi registrado com sucesso no sistema.</p>
-                                </div>
-                            """, unsafe_allow_html=True)
-                            import time
-                            time.sleep(5)
-                            st.rerun()
+if __name__ == '__main__':
+    # Inicializar session_state com segurança
+    if 'modo_edicao' not in st.session_state:
+        st.session_state['modo_edicao'] = False
+    if 'escola_em_edicao' not in st.session_state:
+        st.session_state['escola_em_edicao'] = None
+    if 'pagina_atual' not in st.session_state:
+        st.session_state['pagina_atual'] = 'Cadastrar Escola'
+    
+    mostrar_menu()

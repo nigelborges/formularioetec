@@ -135,7 +135,7 @@ def exportar_dados_geral():
     if nivel == 'admin':
         df_escolas = carregar_escolas()
     else:
-    df_escolas = carregar_escolas()
+        df_escolas = carregar_escolas()
     df_escolas = df_escolas[df_escolas['usuario_id'] == usuario_id]
     todos = []
     for _, escola in df_escolas.iterrows():

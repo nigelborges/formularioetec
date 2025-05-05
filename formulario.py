@@ -98,7 +98,7 @@ def carregar_escolas():
 
     dados = cursor.fetchall()
     conn.close()
-    return pd.DataFrame(dados, columns=['id', 'nome', 'endereco', 'usuario_id']))
+    return pd.DataFrame(dados, columns=['id', 'nome', 'endereco', 'usuario_id'])
     return pd.DataFrame(st.session_state['escolas'][escola_id]['salas'])
 
 def exportar_dados_por_escola(escola_id):
@@ -133,8 +133,8 @@ def exportar_dados_geral():
     nivel = st.session_state['usuario']['nivel']
 
     if nivel == 'admin':
-    df_escolas = carregar_escolas()
-else:
+        df_escolas = carregar_escolas()
+    else:
     df_escolas = carregar_escolas()
     df_escolas = df_escolas[df_escolas['usuario_id'] == usuario_id]
     todos = []

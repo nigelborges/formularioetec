@@ -135,10 +135,19 @@ def visualizar():
     st.title("📋 Escolas Cadastradas")
     st.divider()
 
+    if 'usuario' not in st.session_state:
+        st.error("Usuário não autenticado.")
+        return
+
     filtro_nome = st.text_input("🔎 Filtrar por nome da escola")
     filtro_endereco = st.text_input("📍 Filtrar por endereço")
 
-    df_escolas = carregar_escolas()
+    try:
+        df_escolas = carregar_escolas()
+    except Exception as e:
+        st.error(f"Erro ao carregar escolas: {e}")
+        return
+
     if filtro_nome:
         df_escolas = df_escolas[df_escolas['nome'].str.contains(filtro_nome, case=False, na=False)]
     if filtro_endereco:
@@ -149,11 +158,20 @@ def visualizar():
         return
 
     for _, escola in df_escolas.iterrows():
+        if 'id' not in escola:
+            continue
+
         with st.expander(f"🏫 {escola['nome']} - {escola['endereco']}"):
             st.subheader(f"📄 Salas da escola {escola['nome']}")
             st.caption(f"Endereço: {escola['endereco']}")
             st.markdown("---")
-            df_salas = carregar_salas_por_escola(escola['id'])
+
+            try:
+                df_salas = carregar_salas_por_escola(escola['id'])
+            except Exception as e:
+                st.error(f"Erro ao carregar salas: {e}")
+                continue
+
             if df_salas.empty:
                 st.write("Nenhuma sala cadastrada.")
             else:
@@ -188,10 +206,13 @@ def visualizar():
             with col3:
                 if st.session_state['usuario']['nivel'] == 'admin':
                     if st.button(f"📁 Exportar CSV", key=f"botao_exportar_{escola['id']}", use_container_width=True):
-                        df_exportar = exportar_dados_geral()
-                        st.download_button(
-                            "⬇️ Baixar CSV",
-                            df_exportar.to_csv(index=False).encode('utf-8'),
-                            file_name=f"escola_{escola['id']}.csv",
-                            key=f"download_{escola['id']}"
-                        )
+                        try:
+                            df_exportar = exportar_dados_geral()
+                            st.download_button(
+                                "⬇️ Baixar CSV",
+                                df_exportar.to_csv(index=False).encode('utf-8'),
+                                file_name=f"escola_{escola['id']}.csv",
+                                key=f"download_{escola['id']}"
+                            )
+                        except Exception as e:
+                            st.error(f"Erro ao exportar CSV: {e}")
